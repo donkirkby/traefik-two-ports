@@ -25,6 +25,8 @@ services:
   # We bind container `app1` to both entrypoints `ep1` and `ep2`, with a `Host`
   # rule matching `example.com`. The launch script launches two darkhttpd
   # processes that listen on ports 8080 and 9090.
+  # When a service container holds more than one service, you have to explicitly
+  # name the service for each router.
   app1:
     image: docker.io/alpinelinux/darkhttpd:latest
     volumes:
@@ -40,9 +42,11 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.services.app1.loadbalancer.server.port=8080
+      - traefik.http.routers.app1.service=app1
       - traefik.http.routers.app1.rule=Host(`example.com`)
       - traefik.http.routers.app1.entrypoints=ep1
       - traefik.http.services.app2.loadbalancer.server.port=9090
+      - traefik.http.routers.app2.service=app2
       - traefik.http.routers.app2.rule=Host(`example.com`)
       - traefik.http.routers.app2.entrypoints=ep2
     entrypoint: /var/www/localhost/launcher/launch.sh

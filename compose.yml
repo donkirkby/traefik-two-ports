@@ -22,33 +22,27 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
-  # We bind container `app1` to entrypoint `ep1`, with a `Host`
-  # rule matching `example.com`. I'm setting `...server.port` here
-  # because the `darkhttpd` container listens on port 8080.
+  # We bind container `app1` to both entrypoints `ep1` and `ep2`, with a `Host`
+  # rule matching `example.com`. The launch script launches two darkhttpd
+  # processes that listen on ports 8080 and 9090.
   app1:
     image: docker.io/alpinelinux/darkhttpd:latest
     volumes:
       - type: bind
         source: www80
         target: /var/www/localhost/htdocs
+      - type: bind
+        source: www9090
+        target: /var/www/localhost/htdocs9090
+      - type: bind
+        source: launcher
+        target: /var/www/localhost/launcher
     labels:
       - traefik.enable=true
       - traefik.http.services.app1.loadbalancer.server.port=8080
       - traefik.http.routers.app1.rule=Host(`example.com`)
       - traefik.http.routers.app1.entrypoints=ep1
-
-  # We bind container `app2` to entrypoint `ep2`, with a `Host`
-  # rule matching `example.com`.
-  app2:
-    image: docker.io/alpinelinux/darkhttpd:latest
-    volumes:
-      - type: bind
-        source: www9090
-        target: /var/www/localhost/htdocs
-    labels:
-      - traefik.enable=true
       - traefik.http.services.app2.loadbalancer.server.port=9090
       - traefik.http.routers.app2.rule=Host(`example.com`)
       - traefik.http.routers.app2.entrypoints=ep2
-    entrypoint: ["darkhttpd", "/var/www/localhost/htdocs", "--port", "9090"]
-
+    entrypoint: /var/www/localhost/launcher/launch.sh

@@ -1,0 +1,54 @@
+version: "3"
+
+services:
+
+  # The `proxy` service set up two entrypoints (read that as
+  # "listeners") for traefik, one on port 80 and one on port 9090.
+  proxy:
+    image: traefik:latest
+    command:
+      - --api.insecure=true
+      - --providers.docker
+      - --entrypoints.ep1.address=:80
+      - --entrypoints.ep2.address=:9090
+
+    # We need to publish ports 80 and 9090. Here I'm also
+    # publishing port 8080, which is the Traefik dashboard, but
+    # that's not necessary.
+    ports:
+      - "80:80"
+      - "8080:8080"
+      - "9090:9090"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # We bind container `app1` to entrypoint `ep1`, with a `Host`
+  # rule matching `example.com`. I'm setting `...server.port` here
+  # because the `darkhttpd` container listens on port 8080.
+  app1:
+    image: docker.io/alpinelinux/darkhttpd:latest
+    volumes:
+      - type: bind
+        source: www80
+        target: /var/www/localhost/htdocs
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.app1.loadbalancer.server.port=8080
+      - traefik.http.routers.app1.rule=Host(`example.com`)
+      - traefik.http.routers.app1.entrypoints=ep1
+
+  # We bind container `app2` to entrypoint `ep2`, with a `Host`
+  # rule matching `example.com`.
+  app2:
+    image: docker.io/alpinelinux/darkhttpd:latest
+    volumes:
+      - type: bind
+        source: www9090
+        target: /var/www/localhost/htdocs
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.app2.loadbalancer.server.port=9090
+      - traefik.http.routers.app2.rule=Host(`example.com`)
+      - traefik.http.routers.app2.entrypoints=ep2
+    entrypoint: ["darkhttpd", "/var/www/localhost/htdocs", "--port", "9090"]
+
